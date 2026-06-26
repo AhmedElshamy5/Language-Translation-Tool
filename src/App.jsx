@@ -48,12 +48,7 @@ export default function TranslationTool() {
       const url =
         "https://api.mymemory.translated.net/get?q=" +
         encodeURIComponent(text) +
-        "&langpair=" +
-        sourceLang +
-        "|" +
-        targetLang;
-
-
+        "&langpair=" + sourceLang + "|" + targetLang;
 
       const res = await fetch(url);
       if (!res.ok) throw new Error("Network error");
@@ -62,9 +57,23 @@ export default function TranslationTool() {
       if (data.responseStatus !== 200 && data.responseStatus !== "200") {
         throw new Error(data.responseDetails || "Translation failed");
       }
-      setOutputText(data.responseData.translatedText);
+
+      let best = data.responseData.translatedText;
+
+      if (Array.isArray(data.matches) && data.matches.length > 0) {
+        const ranked = [...data.matches].sort((a, b) => {
+          const qa = Number(a.quality) || 0;
+          const qb = Number(b.quality) || 0;
+          if (qb !== qa) return qb - qa;
+          return (b.match || 0) - (a.match || 0);
+        });
+        best = ranked[0].translation;
+      }
+
+      setOutputText(best);
     } catch (err) {
-      setError("Couldn't translate. Check your connection and try again.");
+      console.error("Translate failed:", err);
+      setError("Couldn't translate. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -77,7 +86,7 @@ export default function TranslationTool() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       if (value.trim()) translate();
-    }, 700);
+    }, 100000000000000000000);
   };
 
   const swapLanguages = () => {
